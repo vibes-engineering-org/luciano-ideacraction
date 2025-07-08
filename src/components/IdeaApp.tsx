@@ -2,24 +2,40 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Lightbulb, MessageSquare, Wallet } from "lucide-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "sonner";
-import IdeaSubmissionForm from "./IdeaSubmissionForm";
-import IdeaBoard from "./IdeaBoard";
-import type { IdeaAttestation } from "~/lib/eas";
+import IdeaSubmissionForm from "./idea-submission-form";
+import IdeasBoard from "./ideas-board";
+import RemixModal from "./remix-modal";
+import { useIdeasAttestation, type Idea } from "~/hooks/useIdeasAttestation";
 
 export default function IdeaApp() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedRemixIdea, setSelectedRemixIdea] = useState<Idea | null>(null);
   const { address, isConnected } = useAccount();
   const { connect, connectors, error } = useConnect();
   const { disconnect } = useDisconnect();
+  const { submitIdea } = useIdeasAttestation();
 
-  const handleIdeaSubmitted = (idea: IdeaAttestation) => {
-    // Trigger refresh of the idea board
-    setRefreshTrigger(prev => prev + 1);
+  const handleIdeaSubmitted = async (ideaData: {
+    title: string;
+    description: string;
+    category: string;
+    submitter: string;
+  }) => {
+    try {
+      await submitIdea(ideaData);
+      toast.success("Idea submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting idea:", error);
+      toast.error("Failed to submit idea. Please try again.");
+    }
+  };
+
+  const handleRemixIdea = (idea: Idea) => {
+    setSelectedRemixIdea(idea);
   };
 
   const handleConnect = () => {
@@ -36,12 +52,12 @@ export default function IdeaApp() {
   };
 
   return (
-    <div className="w-[400px] mx-auto py-8 px-4 min-h-screen">
+    <div className="w-full max-w-7xl mx-auto py-8 px-4 min-h-screen">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">Ideas Board</h1>
+        <h1 className="text-4xl font-bold mb-2">💡 IdeaCraction</h1>
         <p className="text-muted-foreground">
-          Submit, upvote, and remix ideas with on-chain attestations
+          Submit, attest, and build on ideas collaboratively
         </p>
       </div>
 
@@ -97,13 +113,22 @@ export default function IdeaApp() {
         </TabsList>
         
         <TabsContent value="board" className="mt-6">
-          <IdeaBoard refreshTrigger={refreshTrigger} />
+          <IdeasBoard onRemixIdea={handleRemixIdea} />
         </TabsContent>
         
         <TabsContent value="submit" className="mt-6">
-          <IdeaSubmissionForm onIdeaSubmitted={handleIdeaSubmitted} />
+          <IdeaSubmissionForm onSubmit={handleIdeaSubmitted} />
         </TabsContent>
       </Tabs>
+
+      {/* Remix Modal */}
+      {selectedRemixIdea && (
+        <RemixModal
+          originalIdea={selectedRemixIdea}
+          isOpen={!!selectedRemixIdea}
+          onClose={() => setSelectedRemixIdea(null)}
+        />
+      )}
 
       {/* Info Card */}
       <Card className="mt-8">
