@@ -1,4 +1,4 @@
-export const PROJECT_TITLE = "ideacraction";
+export const PROJECT_TITLE = "Built It";
 export const PROJECT_DESCRIPTION = "Submit, attest, and build on ideas collaboratively";
 export const PROJECT_CREATOR = "luciano";
 export const PROJECT_AVATAR_URL =

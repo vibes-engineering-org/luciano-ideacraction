@@ -55,7 +55,7 @@ export default function IdeaApp() {
     <div className="w-full max-w-7xl mx-auto py-8 px-4 min-h-screen">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">💡 IdeaCraction</h1>
+        <h1 className="text-4xl font-bold mb-2">🔨 Built It</h1>
         <p className="text-muted-foreground">
           Submit, attest, and build on ideas collaboratively
         </p>
