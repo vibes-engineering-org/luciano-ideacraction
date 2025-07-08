@@ -12,6 +12,7 @@
   "dependencies": {
     "@daimo/contract": "^1.6.0",
     "@daimo/pay": "^1.8.4",
+    "@ethereum-attestation-service/eas-sdk": "^2.7.0",
     "@farcaster/auth-client": "^0.3.0",
     "@farcaster/auth-kit": "^0.6.0",
     "@farcaster/frame-core": "^0.0.31",
@@ -59,6 +60,7 @@
     "cmdk": "1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
+    "ethers": "^6.15.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.469.0",
     "mipd": "^0.0.7",
