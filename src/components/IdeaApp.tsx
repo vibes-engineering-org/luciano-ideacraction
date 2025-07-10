@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
-import { Lightbulb, MessageSquare, Wallet } from "lucide-react";
+import { Lightbulb, MessageSquare, Wallet, Hammer } from "lucide-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "sonner";
 import IdeaSubmissionForm from "./idea-submission-form";
@@ -100,24 +100,49 @@ export default function IdeaApp() {
       </Card>
 
       {/* Main Content */}
-      <Tabs defaultValue="board" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="board" className="flex items-center space-x-2">
-            <MessageSquare className="w-4 h-4" />
-            <span>Ideas Board</span>
-          </TabsTrigger>
+      <Tabs defaultValue="submit" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="submit" className="flex items-center space-x-2">
             <Lightbulb className="w-4 h-4" />
             <span>Submit Idea</span>
           </TabsTrigger>
+          <TabsTrigger value="board" className="flex items-center space-x-2">
+            <MessageSquare className="w-4 h-4" />
+            <span>Ideas Board</span>
+          </TabsTrigger>
+          <TabsTrigger value="built" className="flex items-center space-x-2">
+            <Hammer className="w-4 h-4" />
+            <span>Built It</span>
+          </TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="submit" className="mt-6">
+          <IdeaSubmissionForm onSubmit={handleIdeaSubmitted} />
+        </TabsContent>
         
         <TabsContent value="board" className="mt-6">
           <IdeasBoard onRemixIdea={handleRemixIdea} />
         </TabsContent>
         
-        <TabsContent value="submit" className="mt-6">
-          <IdeaSubmissionForm onSubmit={handleIdeaSubmitted} />
+        <TabsContent value="built" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Hammer className="w-5 h-5" />
+                <span>Built Projects</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  Projects built from community ideas will appear here
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Connect your wallet and claim an idea to start building
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
