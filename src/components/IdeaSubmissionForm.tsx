@@ -16,7 +16,6 @@ import { useAccount } from "wagmi";
 const ideaFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be under 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be under 500 characters"),
-  miniappUrl: z.string().url().optional().default("https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"),
 });
 
 type IdeaFormData = z.infer<typeof ideaFormSchema>;
@@ -36,9 +35,6 @@ export default function IdeaSubmissionForm({ onIdeaSubmitted }: IdeaSubmissionFo
     formState: { errors },
   } = useForm<IdeaFormData>({
     resolver: zodResolver(ideaFormSchema),
-    defaultValues: {
-      miniappUrl: "https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes",
-    },
   });
 
   const onSubmit = async (data: IdeaFormData) => {
@@ -53,8 +49,7 @@ export default function IdeaSubmissionForm({ onIdeaSubmitted }: IdeaSubmissionFo
       // Create attestation on-chain
       const attestationUID = await createIdeaAttestation(
         data.title,
-        data.description,
-        data.miniappUrl
+        data.description
       );
 
       // Create idea object
@@ -62,7 +57,7 @@ export default function IdeaSubmissionForm({ onIdeaSubmitted }: IdeaSubmissionFo
         uid: attestationUID,
         title: data.title,
         description: data.description,
-        miniappUrl: data.miniappUrl,
+        miniappUrl: "",
         timestamp: Date.now(),
         attester: address,
         upvotes: 0,
@@ -125,18 +120,6 @@ export default function IdeaSubmissionForm({ onIdeaSubmitted }: IdeaSubmissionFo
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="miniappUrl">Mini App URL</Label>
-            <Input
-              id="miniappUrl"
-              placeholder="https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"
-              {...register("miniappUrl")}
-              disabled={isSubmitting}
-            />
-            {errors.miniappUrl && (
-              <p className="text-sm text-red-600">{errors.miniappUrl.message}</p>
-            )}
-          </div>
 
           <Button 
             type="submit" 

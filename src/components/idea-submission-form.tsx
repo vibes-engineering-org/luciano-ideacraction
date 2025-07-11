@@ -11,14 +11,12 @@ interface IdeaSubmissionFormProps {
   onSubmit: (idea: {
     title: string;
     description: string;
-    miniappUrl?: string;
   }) => void;
 }
 
 export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [miniappUrl, setMiniappUrl] = useState("https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAccount();
 
@@ -33,13 +31,11 @@ export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps
       await onSubmit({
         title: title.trim(),
         description: description.trim(),
-        miniappUrl: miniappUrl.trim() || undefined,
       });
       
       // Reset form
       setTitle("");
       setDescription("");
-      setMiniappUrl("https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes");
       
       // Show success feedback
       toast.success("Idea submitted successfully!");
@@ -92,19 +88,6 @@ export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps
             />
           </div>
 
-          <div>
-            <label htmlFor="miniappUrl" className="block text-sm font-medium mb-2">
-              Mini App URL
-            </label>
-            <Input
-              id="miniappUrl"
-              type="url"
-              value={miniappUrl}
-              onChange={(e) => setMiniappUrl(e.target.value)}
-              placeholder="https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"
-              className="w-full"
-            />
-          </div>
 
           <Button
             type="submit"

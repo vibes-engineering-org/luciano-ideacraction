@@ -99,7 +99,7 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
         uid: remixUID,
         title,
         description,
-        miniappUrl: originalIdea.miniappUrl,
+        miniappUrl: "",
         timestamp: Date.now(),
         attester: address,
         upvotes: 0,
@@ -126,13 +126,21 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
       return;
     }
 
+    const miniappUrl = prompt("Enter the URL of your mini app implementation:");
+    
+    if (!miniappUrl) {
+      toast.error("Miniapp URL is required to claim and attest to building an idea");
+      return;
+    }
+
     try {
-      const claimUID = await createClaimAttestation(ideaUID);
+      const claimUID = await createClaimAttestation(ideaUID, "in_progress", miniappUrl);
       
       const claim: ClaimAttestation = {
         uid: claimUID,
         ideaAttestationUID: ideaUID,
         status: "in_progress",
+        miniappUrl: miniappUrl,
         timestamp: Date.now(),
         attester: address,
       };
@@ -143,7 +151,7 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
       // Reload ideas
       loadIdeas();
       
-      toast.success("Claim submitted and attested on-chain!");
+      toast.success("Claim submitted and attested on-chain with your miniapp URL!");
     } catch (error) {
       console.error("Error claiming idea:", error);
       toast.error("Failed to claim idea. Please try again.");
@@ -212,15 +220,17 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
                 </span>
               </div>
               
-              <a 
-                href={idea.miniappUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>View App</span>
-              </a>
+              {idea.miniappUrl && (
+                <a 
+                  href={idea.miniappUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>View App</span>
+                </a>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -309,12 +319,25 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
                 <div className="space-y-2">
                   {idea.claims.map((claim) => (
                     <div key={claim.uid} className="bg-muted p-3 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <Badge variant="default">{claim.status}</Badge>
-                          <span className="text-sm text-muted-foreground ml-2">
-                            Claimed by {formatAddress(claim.attester)}
-                          </span>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Badge variant="default">{claim.status}</Badge>
+                            <span className="text-sm text-muted-foreground">
+                              Claimed by {formatAddress(claim.attester)}
+                            </span>
+                          </div>
+                          {claim.miniappUrl && (
+                            <a 
+                              href={claim.miniappUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>View Implementation</span>
+                            </a>
+                          )}
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {formatTimestamp(claim.timestamp)}

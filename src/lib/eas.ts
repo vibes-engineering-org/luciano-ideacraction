@@ -17,7 +17,7 @@ export const BUILD_RATING_SCHEMA_UID = "0x7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
 export const IDEA_SCHEMA = "string title,string description,string miniappUrl,uint256 timestamp";
 export const UPVOTE_SCHEMA = "bytes32 ideaAttestationUID,uint256 timestamp";
 export const REMIX_SCHEMA = "bytes32 originalIdeaUID,string title,string description,string miniappUrl,uint256 timestamp";
-export const CLAIM_SCHEMA = "bytes32 ideaAttestationUID,string status,uint256 timestamp";
+export const CLAIM_SCHEMA = "bytes32 ideaAttestationUID,string status,string miniappUrl,uint256 timestamp";
 export const BUILD_SCHEMA = "bytes32 ideaAttestationUID,string title,string description,string buildUrl,string githubUrl,uint256 timestamp";
 export const BUILD_RATING_SCHEMA = "bytes32 buildAttestationUID,uint256 rating,string comment,uint256 timestamp";
 
@@ -37,6 +37,7 @@ export interface ClaimAttestation {
   uid: string;
   ideaAttestationUID: string;
   status: string;
+  miniappUrl: string;
   timestamp: number;
   attester: string;
 }
@@ -78,7 +79,7 @@ export async function getEAS(): Promise<EAS> {
 export async function createIdeaAttestation(
   title: string,
   description: string,
-  miniappUrl: string = "https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"
+  miniappUrl: string = ""
 ): Promise<string> {
   const eas = await getEAS();
   const schemaEncoder = new SchemaEncoder(IDEA_SCHEMA);
@@ -131,7 +132,7 @@ export async function createRemixAttestation(
   originalIdeaUID: string,
   title: string,
   description: string,
-  miniappUrl: string = "https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"
+  miniappUrl: string = ""
 ): Promise<string> {
   const eas = await getEAS();
   const schemaEncoder = new SchemaEncoder(REMIX_SCHEMA);
@@ -160,7 +161,8 @@ export async function createRemixAttestation(
 
 export async function createClaimAttestation(
   ideaAttestationUID: string,
-  status: string = "in_progress"
+  status: string = "in_progress",
+  miniappUrl: string = ""
 ): Promise<string> {
   const eas = await getEAS();
   const schemaEncoder = new SchemaEncoder(CLAIM_SCHEMA);
@@ -168,6 +170,7 @@ export async function createClaimAttestation(
   const encodedData = schemaEncoder.encodeData([
     { name: "ideaAttestationUID", value: ideaAttestationUID, type: "bytes32" },
     { name: "status", value: status, type: "string" },
+    { name: "miniappUrl", value: miniappUrl, type: "string" },
     { name: "timestamp", value: BigInt(Date.now()), type: "uint256" }
   ]);
 

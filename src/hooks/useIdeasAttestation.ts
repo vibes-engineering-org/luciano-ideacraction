@@ -375,6 +375,7 @@ export function useIdeasAttestation() {
           uid: claimUID,
           ideaAttestationUID: idea.attestationHash || ideaId,
           status: "in_progress",
+          miniappUrl: "",
           timestamp: Date.now(),
           attester: address
         };
