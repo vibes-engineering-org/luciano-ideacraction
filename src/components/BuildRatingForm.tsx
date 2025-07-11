@@ -22,7 +22,7 @@ export default function BuildRatingForm({ build, onSubmit, onCancel }: BuildRati
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const { address, isConnected } = useAccount();
-  const { rateBuild } = useIdeasAttestation();
+  const { rateBuild } = useEAS();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ export default function BuildRatingForm({ build, onSubmit, onCancel }: BuildRati
 
     setLoading(true);
     try {
-      await rateBuild(build.id, rating, comment.trim());
+      await rateBuild(build.uid, rating, comment.trim());
       onSubmit({ rating, comment: comment.trim() });
       toast.success("Rating submitted successfully!");
       // Reset form
