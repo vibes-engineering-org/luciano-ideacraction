@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Label } from "~/components/ui/label";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
-import { useIdeasAttestation, type Build } from "~/hooks/useIdeasAttestation";
+import { useEAS } from "~/hooks/useEAS";
+import { type BuildAttestation } from "~/lib/eas";
 import { Star } from "lucide-react";
 
 interface BuildRatingFormProps {
-  build: Build;
+  build: BuildAttestation;
   onSubmit: (rating: any) => void;
   onCancel: () => void;
 }

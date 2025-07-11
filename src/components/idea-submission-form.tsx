@@ -11,21 +11,20 @@ interface IdeaSubmissionFormProps {
   onSubmit: (idea: {
     title: string;
     description: string;
-    category: string;
-    submitter: string;
+    miniappUrl?: string;
   }) => void;
 }
 
 export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
+  const [miniappUrl, setMiniappUrl] = useState("https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAccount();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !category.trim()) {
+    if (!title.trim() || !description.trim()) {
       return;
     }
 
@@ -34,14 +33,13 @@ export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps
       await onSubmit({
         title: title.trim(),
         description: description.trim(),
-        category: category.trim(),
-        submitter: address || "anonymous",
+        miniappUrl: miniappUrl.trim() || undefined,
       });
       
       // Reset form
       setTitle("");
       setDescription("");
-      setCategory("");
+      setMiniappUrl("https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes");
       
       // Show success feedback
       toast.success("Idea submitted successfully!");
@@ -95,30 +93,22 @@ export default function IdeaSubmissionForm({ onSubmit }: IdeaSubmissionFormProps
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium mb-2">
-              Category
+            <label htmlFor="miniappUrl" className="block text-sm font-medium mb-2">
+              Mini App URL
             </label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="">Select a category</option>
-              <option value="defi">DeFi</option>
-              <option value="nft">NFT</option>
-              <option value="gaming">Gaming</option>
-              <option value="social">Social</option>
-              <option value="tooling">Tooling</option>
-              <option value="infrastructure">Infrastructure</option>
-              <option value="other">Other</option>
-            </select>
+            <Input
+              id="miniappUrl"
+              type="url"
+              value={miniappUrl}
+              onChange={(e) => setMiniappUrl(e.target.value)}
+              placeholder="https://farcaster.xyz/miniapps/GuNc8GIUCIqj/vibes"
+              className="w-full"
+            />
           </div>
 
           <Button
             type="submit"
-            disabled={isSubmitting || !title.trim() || !description.trim() || !category.trim()}
+            disabled={isSubmitting || !title.trim() || !description.trim()}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-colors"
           >
             {isSubmitting ? (

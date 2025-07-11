@@ -12,24 +12,24 @@ import IdeaSubmissionForm from "./idea-submission-form";
 import IdeasBoard from "./ideas-board";
 import RemixModal from "./remix-modal";
 import BuildRatingForm from "./BuildRatingForm";
-import { useIdeasAttestation, type Idea, type Build } from "~/hooks/useIdeasAttestation";
+import { useEAS } from "~/hooks/useEAS";
+import { type IdeaAttestation, type BuildAttestation } from "~/lib/eas";
 
 export default function IdeaApp() {
-  const [selectedRemixIdea, setSelectedRemixIdea] = useState<Idea | null>(null);
-  const [selectedRatingBuild, setSelectedRatingBuild] = useState<Build | null>(null);
+  const [selectedRemixIdea, setSelectedRemixIdea] = useState<IdeaAttestation | null>(null);
+  const [selectedRatingBuild, setSelectedRatingBuild] = useState<BuildAttestation | null>(null);
   const { address, isConnected } = useAccount();
   const { connect, connectors, error } = useConnect();
   const { disconnect } = useDisconnect();
-  const { submitIdea, builds, getTopRatedBuilds } = useIdeasAttestation();
+  const { submitIdea, builds, error: easError } = useEAS();
 
   const handleIdeaSubmitted = async (ideaData: {
     title: string;
     description: string;
-    category: string;
-    submitter: string;
+    miniappUrl?: string;
   }) => {
     try {
-      await submitIdea(ideaData);
+      await submitIdea(ideaData.title, ideaData.description, ideaData.miniappUrl);
       toast.success("Idea submitted successfully!");
     } catch (error) {
       console.error("Error submitting idea:", error);
@@ -37,7 +37,7 @@ export default function IdeaApp() {
     }
   };
 
-  const handleRemixIdea = (idea: Idea) => {
+  const handleRemixIdea = (idea: IdeaAttestation) => {
     setSelectedRemixIdea(idea);
   };
 
@@ -147,8 +147,8 @@ export default function IdeaApp() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {getTopRatedBuilds().map((build) => (
-                    <div key={build.id} className="p-4 border rounded-lg">
+                  {builds.map((build) => (
+                    <div key={build.uid} className="p-4 border rounded-lg">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-semibold text-lg">{build.title}</h3>
                         <div className="flex items-center space-x-2">
@@ -174,7 +174,7 @@ export default function IdeaApp() {
                             </a>
                           </Button>
                         )}
-                        {address && address !== build.builder && !build.ratings.some(r => r.rater === address) && (
+                        {address && address !== build.attester && !build.ratings.some(r => r.attester === address) && (
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button size="sm" variant="outline">
@@ -194,7 +194,7 @@ export default function IdeaApp() {
                         )}
                       </div>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Built by {build.builder.slice(0, 6)}...{build.builder.slice(-4)}</span>
+                        <span>Built by {build.attester.slice(0, 6)}...{build.attester.slice(-4)}</span>
                         <span>{new Date(build.timestamp).toLocaleDateString()}</span>
                       </div>
                     </div>

@@ -7,33 +7,21 @@ import { Badge } from "~/components/ui/badge";
 import { Avatar } from "~/components/ui/avatar";
 import { Dialog, DialogContent, DialogTrigger } from "~/components/ui/dialog";
 import { useAccount } from "wagmi";
-import { useIdeasAttestation, type Idea } from "~/hooks/useIdeasAttestation";
+import { useEAS } from "~/hooks/useEAS";
+import { type IdeaAttestation } from "~/lib/eas";
 import BuildSubmissionForm from "./BuildSubmissionForm";
 
 interface IdeasBoardProps {
-  onRemixIdea: (idea: Idea) => void;
+  onRemixIdea: (idea: IdeaAttestation) => void;
 }
 
 export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
-  const [selectedBuildIdea, setSelectedBuildIdea] = useState<Idea | null>(null);
+  const [selectedBuildIdea, setSelectedBuildIdea] = useState<IdeaAttestation | null>(null);
   const { address } = useAccount();
-  const { ideas, upvoteIdea, claimIdea, loading } = useIdeasAttestation();
-
-  const categories = [
-    { value: "all", label: "All Ideas", emoji: "🎯" },
-    { value: "defi", label: "DeFi", emoji: "💰" },
-    { value: "nft", label: "NFT", emoji: "🎨" },
-    { value: "gaming", label: "Gaming", emoji: "🎮" },
-    { value: "social", label: "Social", emoji: "👥" },
-    { value: "tooling", label: "Tooling", emoji: "🔧" },
-    { value: "infrastructure", label: "Infrastructure", emoji: "⚡" },
-    { value: "other", label: "Other", emoji: "🌟" },
-  ];
+  const { ideas, upvoteIdea, claimIdea, isLoading } = useEAS();
 
   const filteredIdeas = ideas
-    .filter((idea) => selectedCategory === "all" || idea.category === selectedCategory)
     .sort((a, b) => {
       if (sortBy === "popular") {
         return b.upvotes - a.upvotes;
@@ -41,30 +29,11 @@ export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
       return b.timestamp - a.timestamp;
     });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open":
-        return "bg-green-100 text-green-800";
-      case "in_progress":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const getIdeaStatus = (idea: IdeaAttestation) => {
+    if (idea.claims.length > 0) {
+      return { status: "claimed", color: "bg-blue-100 text-blue-800", emoji: "🔵" };
     }
-  };
-
-  const getStatusEmoji = (status: string) => {
-    switch (status) {
-      case "open":
-        return "🟢";
-      case "in_progress":
-        return "🟡";
-      case "completed":
-        return "🔵";
-      default:
-        return "⚪";
-    }
+    return { status: "open", color: "bg-green-100 text-green-800", emoji: "🟢" };
   };
 
   const formatTimeAgo = (timestamp: number) => {
@@ -80,14 +49,14 @@ export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
     return "Just now";
   };
 
-  const handleUpvote = async (ideaId: string) => {
+  const handleUpvote = async (ideaUID: string) => {
     if (!address) return;
-    await upvoteIdea(ideaId);
+    await upvoteIdea(ideaUID);
   };
 
-  const handleClaim = async (ideaId: string) => {
+  const handleClaim = async (ideaUID: string) => {
     if (!address) return;
-    await claimIdea(ideaId);
+    await claimIdea(ideaUID);
   };
 
   return (
@@ -99,150 +68,109 @@ export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <Button
-              key={category.value}
-              variant={selectedCategory === category.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(category.value)}
-              className="text-sm"
-            >
-              <span className="mr-1">{category.emoji}</span>
-              {category.label}
-            </Button>
-          ))}
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant={sortBy === "newest" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSortBy("newest")}
-          >
-            🕐 Newest
-          </Button>
-          <Button
-            variant={sortBy === "popular" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSortBy("popular")}
-          >
-            🔥 Popular
-          </Button>
-        </div>
+      <div className="flex justify-center gap-2">
+        <Button
+          variant={sortBy === "newest" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSortBy("newest")}
+        >
+          Newest
+        </Button>
+        <Button
+          variant={sortBy === "popular" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSortBy("popular")}
+        >
+          Popular
+        </Button>
       </div>
 
       {/* Ideas Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredIdeas.map((idea) => (
-          <Card key={idea.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge className={getStatusColor(idea.status)}>
-                    {getStatusEmoji(idea.status)} {idea.status}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                {idea.description}
-              </p>
-
-              <div className="flex items-center gap-2 mb-4">
-                <Avatar className="h-6 w-6">
-                  <div className="w-full h-full bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                    {idea.submitter.slice(0, 2)}
+        {filteredIdeas.map((idea) => {
+          const ideaStatus = getIdeaStatus(idea);
+          return (
+            <Card key={idea.uid} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg line-clamp-2">{idea.title}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge className={ideaStatus.color}>
+                      {ideaStatus.emoji} {ideaStatus.status}
+                    </Badge>
                   </div>
-                </Avatar>
-                <span className="text-xs text-gray-500">
-                  {idea.submitter.slice(0, 6)}...{idea.submitter.slice(-4)}
-                </span>
-                <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-500">
-                  {formatTimeAgo(idea.timestamp)}
-                </span>
-              </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                  {idea.description}
+                </p>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleUpvote(idea.id)}
-                    disabled={loading || (address && idea.upvoters.includes(address))}
-                    className="flex items-center gap-1 h-8 px-2"
-                  >
-                    <span className={address && idea.upvoters.includes(address) ? "text-red-500" : ""}>
-                      {address && idea.upvoters.includes(address) ? "❤️" : "🤍"}
-                    </span>
-                    <span className="text-sm">{idea.upvotes}</span>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemixIdea(idea)}
-                    className="flex items-center gap-1 h-8 px-2"
-                  >
-                    <span>🔄</span>
-                    <span className="text-sm">{idea.remixes.length}</span>
-                  </Button>
+                <div className="flex items-center gap-2 mb-4">
+                  <Avatar className="h-6 w-6">
+                    <div className="w-full h-full bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                      {idea.attester.slice(0, 2)}
+                    </div>
+                  </Avatar>
+                  <span className="text-xs text-gray-500">
+                    {idea.attester.slice(0, 6)}...{idea.attester.slice(-4)}
+                  </span>
+                  <span className="text-xs text-gray-400">•</span>
+                  <span className="text-xs text-gray-500">
+                    {formatTimeAgo(idea.timestamp)}
+                  </span>
                 </div>
 
-                {idea.status === "open" && address && idea.submitter !== address && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleClaim(idea.id)}
-                    disabled={loading}
-                    className="h-8 px-3"
-                  >
-                    🔨 Claim
-                  </Button>
-                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleUpvote(idea.uid)}
+                      disabled={isLoading}
+                      className="flex items-center gap-1 h-8 px-2"
+                    >
+                      <span>🤍</span>
+                      <span className="text-sm">{idea.upvotes}</span>
+                    </Button>
 
-                {idea.status === "in_progress" && address && idea.claimedBy === address && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3"
-                      >
-                        🚀 Submit Build
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <BuildSubmissionForm
-                        idea={idea}
-                        onSubmit={(build) => {
-                          setSelectedBuildIdea(null);
-                        }}
-                        onCancel={() => setSelectedBuildIdea(null)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemixIdea(idea)}
+                      className="flex items-center gap-1 h-8 px-2"
+                    >
+                      <span>🔄</span>
+                      <span className="text-sm">{idea.remixes.length}</span>
+                    </Button>
+                  </div>
 
-                {idea.claimedBy && idea.status !== "in_progress" && (
-                  <Badge variant="secondary" className="text-xs">
-                    🔨 Claimed
-                  </Badge>
-                )}
-              </div>
+                  {idea.claims.length === 0 && address && idea.attester !== address && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleClaim(idea.uid)}
+                      disabled={isLoading}
+                      className="h-8 px-3"
+                    >
+                      Claim
+                    </Button>
+                  )}
 
-              {idea.attestationHash && (
+                  {idea.claims.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      Claimed
+                    </Badge>
+                  )}
+                </div>
+
                 <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
-                  <span className="font-mono">🔗 {idea.attestationHash.slice(0, 20)}...</span>
+                  <span className="font-mono">🔗 {idea.uid.slice(0, 20)}...</span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredIdeas.length === 0 && (

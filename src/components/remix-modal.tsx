@@ -6,10 +6,11 @@ import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { useAccount } from "wagmi";
-import { useIdeasAttestation, type Idea } from "~/hooks/useIdeasAttestation";
+import { useEAS } from "~/hooks/useEAS";
+import { type IdeaAttestation } from "~/lib/eas";
 
 interface RemixModalProps {
-  originalIdea: Idea;
+  originalIdea: IdeaAttestation;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,7 +20,7 @@ export default function RemixModal({ originalIdea, isOpen, onClose }: RemixModal
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAccount();
-  const { remixIdea } = useIdeasAttestation();
+  const { remixIdea } = useEAS();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +30,12 @@ export default function RemixModal({ originalIdea, isOpen, onClose }: RemixModal
 
     setIsSubmitting(true);
     try {
-      await remixIdea(originalIdea.id, {
-        title: title.trim(),
-        description: description.trim(),
-      });
+      await remixIdea(
+        originalIdea.uid,
+        title.trim(),
+        description.trim(),
+        originalIdea.miniappUrl
+      );
       
       // Reset form and close modal
       setTitle("");
@@ -61,13 +64,13 @@ export default function RemixModal({ originalIdea, isOpen, onClose }: RemixModal
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium">Original Idea:</span>
-              <Badge variant="outline">{originalIdea.category}</Badge>
+              <Badge variant="outline">Idea</Badge>
             </div>
             <h3 className="font-semibold text-lg mb-2">{originalIdea.title}</h3>
             <p className="text-sm text-gray-600 line-clamp-3">{originalIdea.description}</p>
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-gray-500">
-                by {originalIdea.submitter.slice(0, 6)}...{originalIdea.submitter.slice(-4)}
+                by {originalIdea.attester.slice(0, 6)}...{originalIdea.attester.slice(-4)}
               </span>
               <span className="text-xs text-gray-400">•</span>
               <span className="text-xs text-gray-500">
@@ -145,11 +148,11 @@ export default function RemixModal({ originalIdea, isOpen, onClose }: RemixModal
               <h4 className="font-semibold mb-3">Existing Remixes ({originalIdea.remixes.length})</h4>
               <div className="space-y-3 max-h-48 overflow-y-auto">
                 {originalIdea.remixes.map((remix) => (
-                  <div key={remix.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div key={remix.uid} className="p-3 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-1">{remix.title}</h5>
                     <p className="text-xs text-gray-600 line-clamp-2 mb-2">{remix.description}</p>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>by {remix.submitter.slice(0, 6)}...{remix.submitter.slice(-4)}</span>
+                      <span>by {remix.attester.slice(0, 6)}...{remix.attester.slice(-4)}</span>
                       <span>•</span>
                       <span>{new Date(remix.timestamp).toLocaleDateString()}</span>
                     </div>
