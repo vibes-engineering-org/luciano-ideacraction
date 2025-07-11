@@ -184,6 +184,7 @@ export function useEAS(): UseEASResult {
         uid: attestationUID,
         ideaAttestationUID: ideaUID,
         status,
+        miniappUrl: '',
         timestamp: Date.now(),
         attester: address
       };
