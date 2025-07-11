@@ -4,20 +4,23 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "~/components/ui/dialog";
 import { Lightbulb, MessageSquare, Wallet, Hammer } from "lucide-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { toast } from "sonner";
 import IdeaSubmissionForm from "./idea-submission-form";
 import IdeasBoard from "./ideas-board";
 import RemixModal from "./remix-modal";
-import { useIdeasAttestation, type Idea } from "~/hooks/useIdeasAttestation";
+import BuildRatingForm from "./BuildRatingForm";
+import { useIdeasAttestation, type Idea, type Build } from "~/hooks/useIdeasAttestation";
 
 export default function IdeaApp() {
   const [selectedRemixIdea, setSelectedRemixIdea] = useState<Idea | null>(null);
+  const [selectedRatingBuild, setSelectedRatingBuild] = useState<Build | null>(null);
   const { address, isConnected } = useAccount();
   const { connect, connectors, error } = useConnect();
   const { disconnect } = useDisconnect();
-  const { submitIdea } = useIdeasAttestation();
+  const { submitIdea, builds, getTopRatedBuilds } = useIdeasAttestation();
 
   const handleIdeaSubmitted = async (ideaData: {
     title: string;
@@ -133,14 +136,71 @@ export default function IdeaApp() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
-                  Projects built from community ideas will appear here
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Connect your wallet and claim an idea to start building
-                </p>
-              </div>
+              {builds.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    Projects built from community ideas will appear here
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your wallet and claim an idea to start building
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {getTopRatedBuilds().map((build) => (
+                    <div key={build.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-lg">{build.title}</h3>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-muted-foreground">
+                            {build.averageRating > 0 ? `★ ${build.averageRating.toFixed(1)}` : "Not rated"}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            ({build.ratings.length} ratings)
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground mb-3">{build.description}</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={build.buildUrl} target="_blank" rel="noopener noreferrer">
+                            View Build
+                          </a>
+                        </Button>
+                        {build.githubUrl && (
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={build.githubUrl} target="_blank" rel="noopener noreferrer">
+                              GitHub
+                            </a>
+                          </Button>
+                        )}
+                        {address && address !== build.builder && !build.ratings.some(r => r.rater === address) && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                Rate Build
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <BuildRatingForm
+                                build={build}
+                                onSubmit={(rating) => {
+                                  setSelectedRatingBuild(null);
+                                }}
+                                onCancel={() => setSelectedRatingBuild(null)}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>Built by {build.builder.slice(0, 6)}...{build.builder.slice(-4)}</span>
+                        <span>{new Date(build.timestamp).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

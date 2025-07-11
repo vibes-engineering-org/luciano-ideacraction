@@ -7,13 +7,20 @@ import {
   createUpvoteAttestation, 
   createRemixAttestation, 
   createClaimAttestation,
+  createBuildAttestation,
+  createBuildRatingAttestation,
   getStoredIdeas,
+  getStoredBuilds,
   storeIdea,
+  storeBuild,
   updateIdeaUpvotes,
   addRemixToIdea,
   addClaimToIdea,
+  addRatingToBuild,
   type IdeaAttestation,
-  type ClaimAttestation
+  type ClaimAttestation,
+  type BuildAttestation,
+  type BuildRatingAttestation
 } from "~/lib/eas";
 import { toast } from "sonner";
 
@@ -51,8 +58,33 @@ export interface Upvote {
   attestationHash?: string;
 }
 
+export interface Build {
+  id: string;
+  ideaId: string;
+  title: string;
+  description: string;
+  buildUrl: string;
+  githubUrl: string;
+  builder: string;
+  timestamp: number;
+  attestationHash?: string;
+  ratings: BuildRating[];
+  averageRating: number;
+}
+
+export interface BuildRating {
+  id: string;
+  buildId: string;
+  rating: number;
+  comment: string;
+  rater: string;
+  timestamp: number;
+  attestationHash?: string;
+}
+
 export function useIdeasAttestation() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(false);
   const { address } = useAccount();
 
@@ -112,10 +144,23 @@ export function useIdeasAttestation() {
     }
   }, []);
 
+  // Load builds from localStorage on mount
+  useEffect(() => {
+    const savedBuilds = localStorage.getItem("ideacraction-builds");
+    if (savedBuilds) {
+      setBuilds(JSON.parse(savedBuilds));
+    }
+  }, []);
+
   // Save ideas to localStorage whenever ideas change
   useEffect(() => {
     localStorage.setItem("ideacraction-ideas", JSON.stringify(ideas));
   }, [ideas]);
+
+  // Save builds to localStorage whenever builds change
+  useEffect(() => {
+    localStorage.setItem("ideacraction-builds", JSON.stringify(builds));
+  }, [builds]);
 
   const submitIdea = async (ideaData: {
     title: string;
@@ -374,16 +419,191 @@ export function useIdeasAttestation() {
     return ideas.filter((idea) => idea.claimedBy === userAddress);
   };
 
+  const submitBuild = async (buildData: {
+    ideaId: string;
+    title: string;
+    description: string;
+    buildUrl: string;
+    githubUrl?: string;
+  }) => {
+    if (!address) return;
+
+    setLoading(true);
+    try {
+      const idea = ideas.find(i => i.id === buildData.ideaId);
+      if (!idea) {
+        toast.error("Idea not found!");
+        return;
+      }
+
+      const newBuild: Build = {
+        id: `build-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        ideaId: buildData.ideaId,
+        title: buildData.title,
+        description: buildData.description,
+        buildUrl: buildData.buildUrl,
+        githubUrl: buildData.githubUrl || "",
+        builder: address,
+        timestamp: Date.now(),
+        ratings: [],
+        averageRating: 0,
+      };
+
+      try {
+        // Try to create real EAS build attestation
+        const buildUID = await createBuildAttestation(
+          idea.attestationHash || buildData.ideaId,
+          buildData.title,
+          buildData.description,
+          buildData.buildUrl,
+          buildData.githubUrl || ""
+        );
+        
+        newBuild.attestationHash = buildUID;
+        
+        // Store the build with EAS UID
+        const easBuild: BuildAttestation = {
+          uid: buildUID,
+          ideaAttestationUID: idea.attestationHash || buildData.ideaId,
+          title: buildData.title,
+          description: buildData.description,
+          buildUrl: buildData.buildUrl,
+          githubUrl: buildData.githubUrl || "",
+          timestamp: Date.now(),
+          attester: address,
+          ratings: [],
+          averageRating: 0
+        };
+        storeBuild(easBuild);
+        
+        toast.success("Build attested on-chain!");
+      } catch (error) {
+        console.warn("Failed to create EAS build attestation, using mock:", error);
+        newBuild.attestationHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        toast.success("Build submitted!");
+      }
+
+      // Update the idea status to completed
+      setIdeas((prev) =>
+        prev.map((idea) => {
+          if (idea.id === buildData.ideaId) {
+            return {
+              ...idea,
+              status: "completed" as const,
+            };
+          }
+          return idea;
+        })
+      );
+
+      setBuilds((prev) => [newBuild, ...prev]);
+      return newBuild;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rateBuild = async (buildId: string, rating: number, comment: string = "") => {
+    if (!address) return;
+
+    setLoading(true);
+    try {
+      const build = builds.find(b => b.id === buildId);
+      if (!build) {
+        toast.error("Build not found!");
+        return;
+      }
+
+      // Check if user already rated this build
+      if (build.ratings.some(r => r.rater === address)) {
+        toast.error("You've already rated this build!");
+        return;
+      }
+
+      const newRating: BuildRating = {
+        id: `rating-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        buildId,
+        rating,
+        comment,
+        rater: address,
+        timestamp: Date.now(),
+      };
+
+      try {
+        // Try to create real EAS rating attestation
+        const ratingUID = await createBuildRatingAttestation(
+          build.attestationHash || buildId,
+          rating,
+          comment
+        );
+        
+        newRating.attestationHash = ratingUID;
+        
+        // Store the rating with EAS UID
+        const easRating: BuildRatingAttestation = {
+          uid: ratingUID,
+          buildAttestationUID: build.attestationHash || buildId,
+          rating,
+          comment,
+          timestamp: Date.now(),
+          attester: address
+        };
+        addRatingToBuild(build.attestationHash || buildId, easRating);
+        
+        toast.success("Rating attested on-chain!");
+      } catch (error) {
+        console.warn("Failed to create EAS rating attestation, using mock:", error);
+        newRating.attestationHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        toast.success("Rating submitted!");
+      }
+
+      setBuilds((prev) =>
+        prev.map((build) => {
+          if (build.id === buildId) {
+            const newRatings = [...build.ratings, newRating];
+            const newAverage = newRatings.reduce((sum, r) => sum + r.rating, 0) / newRatings.length;
+            return {
+              ...build,
+              ratings: newRatings,
+              averageRating: newAverage,
+            };
+          }
+          return build;
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getBuildsByIdea = (ideaId: string) => {
+    return builds.filter((build) => build.ideaId === ideaId);
+  };
+
+  const getBuildsByUser = (userAddress: string) => {
+    return builds.filter((build) => build.builder === userAddress);
+  };
+
+  const getTopRatedBuilds = () => {
+    return builds.sort((a, b) => b.averageRating - a.averageRating);
+  };
+
   return {
     ideas,
+    builds,
     loading,
     submitIdea,
     upvoteIdea,
     remixIdea,
     claimIdea,
+    submitBuild,
+    rateBuild,
     getIdeasByCategory,
     getIdeasByUser,
     getUpvotedIdeas,
     getClaimedIdeas,
+    getBuildsByIdea,
+    getBuildsByUser,
+    getTopRatedBuilds,
   };
 }

@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Avatar } from "~/components/ui/avatar";
+import { Dialog, DialogContent, DialogTrigger } from "~/components/ui/dialog";
 import { useAccount } from "wagmi";
 import { useIdeasAttestation, type Idea } from "~/hooks/useIdeasAttestation";
+import BuildSubmissionForm from "./BuildSubmissionForm";
 
 interface IdeasBoardProps {
   onRemixIdea: (idea: Idea) => void;
@@ -15,6 +17,7 @@ interface IdeasBoardProps {
 export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
+  const [selectedBuildIdea, setSelectedBuildIdea] = useState<Idea | null>(null);
   const { address } = useAccount();
   const { ideas, upvoteIdea, claimIdea, loading } = useIdeasAttestation();
 
@@ -202,7 +205,30 @@ export default function IdeasBoard({ onRemixIdea }: IdeasBoardProps) {
                   </Button>
                 )}
 
-                {idea.claimedBy && (
+                {idea.status === "in_progress" && address && idea.claimedBy === address && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3"
+                      >
+                        🚀 Submit Build
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <BuildSubmissionForm
+                        idea={idea}
+                        onSubmit={(build) => {
+                          setSelectedBuildIdea(null);
+                        }}
+                        onCancel={() => setSelectedBuildIdea(null)}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                {idea.claimedBy && idea.status !== "in_progress" && (
                   <Badge variant="secondary" className="text-xs">
                     🔨 Claimed
                   </Badge>
