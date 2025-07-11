@@ -188,55 +188,135 @@ export async function createClaimAttestation(
   return newAttestationUID;
 }
 
-// Local storage helpers for caching attestations
-export function getStoredIdeas(): IdeaAttestation[] {
-  if (typeof window === "undefined") return [];
-  
-  const stored = localStorage.getItem("ideas");
-  return stored ? JSON.parse(stored) : [];
-}
-
-export function storeIdea(idea: IdeaAttestation) {
-  if (typeof window === "undefined") return;
-  
-  const ideas = getStoredIdeas();
-  ideas.push(idea);
-  localStorage.setItem("ideas", JSON.stringify(ideas));
-}
-
-export function updateIdeaUpvotes(ideaUID: string, upvotes: number) {
-  if (typeof window === "undefined") return;
-  
-  const ideas = getStoredIdeas();
-  const ideaIndex = ideas.findIndex(idea => idea.uid === ideaUID);
-  
-  if (ideaIndex !== -1) {
-    ideas[ideaIndex].upvotes = upvotes;
-    localStorage.setItem("ideas", JSON.stringify(ideas));
+// API helpers for storing attestations in Supabase
+export async function getStoredIdeas(): Promise<IdeaAttestation[]> {
+  try {
+    const response = await fetch('/api/ideas');
+    if (!response.ok) {
+      throw new Error('Failed to fetch ideas');
+    }
+    const data = await response.json();
+    
+    // Convert database format to IdeaAttestation format
+    return data.map((item: any) => ({
+      uid: item.uid,
+      title: item.title,
+      description: item.description,
+      miniappUrl: item.miniapp_url || '',
+      timestamp: item.timestamp,
+      attester: item.attester,
+      upvotes: item.upvotes || 0,
+      remixes: item.remixes || [],
+      claims: item.claims || []
+    }));
+  } catch (error) {
+    console.error('Error fetching ideas:', error);
+    return [];
   }
 }
 
-export function addRemixToIdea(originalIdeaUID: string, remix: IdeaAttestation) {
-  if (typeof window === "undefined") return;
-  
-  const ideas = getStoredIdeas();
-  const ideaIndex = ideas.findIndex(idea => idea.uid === originalIdeaUID);
-  
-  if (ideaIndex !== -1) {
-    ideas[ideaIndex].remixes.push(remix);
-    localStorage.setItem("ideas", JSON.stringify(ideas));
+export async function storeIdea(idea: IdeaAttestation): Promise<void> {
+  try {
+    const response = await fetch('/api/ideas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid: idea.uid,
+        title: idea.title,
+        description: idea.description,
+        miniappUrl: idea.miniappUrl,
+        timestamp: idea.timestamp,
+        attester: idea.attester
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to store idea');
+    }
+  } catch (error) {
+    console.error('Error storing idea:', error);
+    throw error;
   }
 }
 
-export function addClaimToIdea(ideaUID: string, claim: ClaimAttestation) {
-  if (typeof window === "undefined") return;
-  
-  const ideas = getStoredIdeas();
-  const ideaIndex = ideas.findIndex(idea => idea.uid === ideaUID);
-  
-  if (ideaIndex !== -1) {
-    ideas[ideaIndex].claims.push(claim);
-    localStorage.setItem("ideas", JSON.stringify(ideas));
+export async function updateIdeaUpvotes(ideaUID: string, upvotes: number): Promise<void> {
+  try {
+    const response = await fetch(`/api/ideas/${ideaUID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ upvotes }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update idea upvotes');
+    }
+  } catch (error) {
+    console.error('Error updating idea upvotes:', error);
+    throw error;
+  }
+}
+
+export async function addRemixToIdea(originalIdeaUID: string, remix: IdeaAttestation): Promise<void> {
+  try {
+    // Get current idea
+    const response = await fetch(`/api/ideas/${originalIdeaUID}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch idea');
+    }
+    const idea = await response.json();
+    
+    // Add remix to the remixes array
+    const updatedRemixes = [...(idea.remixes || []), remix];
+    
+    // Update the idea
+    const updateResponse = await fetch(`/api/ideas/${originalIdeaUID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ remixes: updatedRemixes }),
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error('Failed to update idea with remix');
+    }
+  } catch (error) {
+    console.error('Error adding remix to idea:', error);
+    throw error;
+  }
+}
+
+export async function addClaimToIdea(ideaUID: string, claim: ClaimAttestation): Promise<void> {
+  try {
+    // Get current idea
+    const response = await fetch(`/api/ideas/${ideaUID}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch idea');
+    }
+    const idea = await response.json();
+    
+    // Add claim to the claims array
+    const updatedClaims = [...(idea.claims || []), claim];
+    
+    // Update the idea
+    const updateResponse = await fetch(`/api/ideas/${ideaUID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ claims: updatedClaims }),
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error('Failed to update idea with claim');
+    }
+  } catch (error) {
+    console.error('Error adding claim to idea:', error);
+    throw error;
   }
 }
 
@@ -303,33 +383,95 @@ export async function createBuildRatingAttestation(
 }
 
 // Build storage helpers
-export function getStoredBuilds(): BuildAttestation[] {
-  if (typeof window === "undefined") return [];
-  
-  const stored = localStorage.getItem("builds");
-  return stored ? JSON.parse(stored) : [];
+export async function getStoredBuilds(): Promise<BuildAttestation[]> {
+  try {
+    const response = await fetch('/api/builds');
+    if (!response.ok) {
+      throw new Error('Failed to fetch builds');
+    }
+    const data = await response.json();
+    
+    // Convert database format to BuildAttestation format
+    return data.map((item: any) => ({
+      uid: item.uid,
+      ideaAttestationUID: item.idea_attestation_uid,
+      title: item.title,
+      description: item.description,
+      buildUrl: item.build_url,
+      githubUrl: item.github_url || '',
+      timestamp: item.timestamp,
+      attester: item.attester,
+      ratings: item.ratings || [],
+      averageRating: item.average_rating || 0
+    }));
+  } catch (error) {
+    console.error('Error fetching builds:', error);
+    return [];
+  }
 }
 
-export function storeBuild(build: BuildAttestation) {
-  if (typeof window === "undefined") return;
-  
-  const builds = getStoredBuilds();
-  builds.push(build);
-  localStorage.setItem("builds", JSON.stringify(builds));
+export async function storeBuild(build: BuildAttestation): Promise<void> {
+  try {
+    const response = await fetch('/api/builds', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid: build.uid,
+        ideaAttestationUID: build.ideaAttestationUID,
+        title: build.title,
+        description: build.description,
+        buildUrl: build.buildUrl,
+        githubUrl: build.githubUrl,
+        timestamp: build.timestamp,
+        attester: build.attester
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to store build');
+    }
+  } catch (error) {
+    console.error('Error storing build:', error);
+    throw error;
+  }
 }
 
-export function addRatingToBuild(buildUID: string, rating: BuildRatingAttestation) {
-  if (typeof window === "undefined") return;
-  
-  const builds = getStoredBuilds();
-  const buildIndex = builds.findIndex(build => build.uid === buildUID);
-  
-  if (buildIndex !== -1) {
-    builds[buildIndex].ratings.push(rating);
+export async function addRatingToBuild(buildUID: string, rating: BuildRatingAttestation): Promise<void> {
+  try {
+    // Get current build
+    const response = await fetch(`/api/builds/${buildUID}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch build');
+    }
+    const build = await response.json();
+    
+    // Add rating to the ratings array
+    const updatedRatings = [...(build.ratings || []), rating];
+    
     // Recalculate average rating
-    const totalRatings = builds[buildIndex].ratings.length;
-    const sumRatings = builds[buildIndex].ratings.reduce((sum, r) => sum + r.rating, 0);
-    builds[buildIndex].averageRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
-    localStorage.setItem("builds", JSON.stringify(builds));
+    const totalRatings = updatedRatings.length;
+    const sumRatings = updatedRatings.reduce((sum: number, r: BuildRatingAttestation) => sum + r.rating, 0);
+    const averageRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
+    
+    // Update the build
+    const updateResponse = await fetch(`/api/builds/${buildUID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        ratings: updatedRatings,
+        average_rating: averageRating
+      }),
+    });
+    
+    if (!updateResponse.ok) {
+      throw new Error('Failed to update build with rating');
+    }
+  } catch (error) {
+    console.error('Error adding rating to build:', error);
+    throw error;
   }
 }

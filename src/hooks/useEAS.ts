@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { 
   createIdeaAttestation, 
@@ -39,13 +39,27 @@ export function useEAS(): UseEASResult {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ideas, setIdeas] = useState<IdeaAttestation[]>(() => getStoredIdeas());
-  const [builds, setBuilds] = useState<BuildAttestation[]>(() => getStoredBuilds());
+  const [ideas, setIdeas] = useState<IdeaAttestation[]>([]);
+  const [builds, setBuilds] = useState<BuildAttestation[]>([]);
 
-  const refreshData = useCallback(() => {
-    setIdeas(getStoredIdeas());
-    setBuilds(getStoredBuilds());
+  const refreshData = useCallback(async () => {
+    try {
+      const [fetchedIdeas, fetchedBuilds] = await Promise.all([
+        getStoredIdeas(),
+        getStoredBuilds()
+      ]);
+      setIdeas(fetchedIdeas);
+      setBuilds(fetchedBuilds);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      setError('Failed to refresh data');
+    }
   }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   const submitIdea = useCallback(async (
     title: string, 
@@ -75,7 +89,7 @@ export function useEAS(): UseEASResult {
         claims: []
       };
 
-      storeIdea(newIdea);
+      await storeIdea(newIdea);
       setIdeas(prev => [...prev, newIdea]);
       
       return attestationUID;
@@ -103,7 +117,7 @@ export function useEAS(): UseEASResult {
       const currentIdea = ideas.find(idea => idea.uid === ideaUID);
       if (currentIdea) {
         const newUpvotes = currentIdea.upvotes + 1;
-        updateIdeaUpvotes(ideaUID, newUpvotes);
+        await updateIdeaUpvotes(ideaUID, newUpvotes);
         setIdeas(prev => prev.map(idea => 
           idea.uid === ideaUID ? { ...idea, upvotes: newUpvotes } : idea
         ));
@@ -148,7 +162,7 @@ export function useEAS(): UseEASResult {
         claims: []
       };
 
-      addRemixToIdea(originalIdeaUID, remix);
+      await addRemixToIdea(originalIdeaUID, remix);
       setIdeas(prev => prev.map(idea => 
         idea.uid === originalIdeaUID 
           ? { ...idea, remixes: [...idea.remixes, remix] }
@@ -189,7 +203,7 @@ export function useEAS(): UseEASResult {
         attester: address
       };
 
-      addClaimToIdea(ideaUID, claim);
+      await addClaimToIdea(ideaUID, claim);
       setIdeas(prev => prev.map(idea => 
         idea.uid === ideaUID 
           ? { ...idea, claims: [...idea.claims, claim] }
@@ -237,7 +251,7 @@ export function useEAS(): UseEASResult {
         averageRating: 0
       };
 
-      storeBuild(build);
+      await storeBuild(build);
       setBuilds(prev => [...prev, build]);
       
       return attestationUID;
@@ -275,7 +289,7 @@ export function useEAS(): UseEASResult {
         attester: address
       };
 
-      addRatingToBuild(buildUID, buildRating);
+      await addRatingToBuild(buildUID, buildRating);
       setBuilds(prev => prev.map(build => {
         if (build.uid === buildUID) {
           const newRatings = [...build.ratings, buildRating];
