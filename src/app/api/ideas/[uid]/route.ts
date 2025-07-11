@@ -8,10 +8,10 @@ const supabase = createClient(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { uid: string } }
+  { params }: { params: Promise<{ uid: string }> }
 ) {
   try {
-    const { uid } = params;
+    const { uid } = await params;
     const body = await request.json();
     
     const { data, error } = await supabase
@@ -35,10 +35,10 @@ export async function PUT(
 
 export async function GET(
   request: Request,
-  { params }: { params: { uid: string } }
+  { params }: { params: Promise<{ uid: string }> }
 ) {
   try {
-    const { uid } = params;
+    const { uid } = await params;
     
     const { data, error } = await supabase
       .from('ideas')

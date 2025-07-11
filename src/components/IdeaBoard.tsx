@@ -34,12 +34,12 @@ export default function IdeaBoard({ refreshTrigger }: IdeaBoardProps) {
     loadIdeas();
   }, [refreshTrigger]);
 
-  const loadIdeas = () => {
+  const loadIdeas = async () => {
     setLoading(true);
     try {
-      const storedIdeas = getStoredIdeas();
+      const storedIdeas = await getStoredIdeas();
       // Sort by timestamp (newest first)
-      const sortedIdeas = storedIdeas.sort((a, b) => b.timestamp - a.timestamp);
+      const sortedIdeas = storedIdeas.sort((a: IdeaAttestation, b: IdeaAttestation) => b.timestamp - a.timestamp);
       setIdeas(sortedIdeas);
     } catch (error) {
       console.error("Error loading ideas:", error);
